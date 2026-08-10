@@ -1,0 +1,6 @@
+Para actualizar este dashboard públicamente:
+1. Toma el Excel actualizado de: Pulso Diario de Negocio.
+2. Renómbralo exactamente: reporte.xlsx
+3. Sube/reemplaza reporte.xlsx dentro de ESTA carpeta en GitHub.
+4. Espera el ✓ verde de GitHub Pages.
+5. El mismo enlace mostrará los datos nuevos automáticamente.
