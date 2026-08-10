@@ -4,6 +4,23 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Dashboard Gestión Comercial · Copiapó</title>
+<meta name="description" content="Dashboard Comercial Copiapó · Reporte de Gestión y Cumplimiento. Seguimiento de ventas y desempeño por asistente comercial con datos del Pulso Diario de Negocio." />
+<meta property="og:type" content="website" />
+<meta property="og:locale" content="es_CL" />
+<meta property="og:site_name" content="Dashboard Comercial Copiapó" />
+<meta property="og:title" content="Dashboard Comercial Copiapó" />
+<meta property="og:description" content="Reporte de Gestión y Cumplimiento · Seguimiento comercial y resultados actualizados desde el Pulso Diario de Negocio." />
+<meta property="og:url" content="https://sloyolaangel-bot.github.io/dashboard-copiapo/" />
+<meta property="og:image" content="https://sloyolaangel-bot.github.io/dashboard-copiapo/og-image.png" />
+<meta property="og:image:secure_url" content="https://sloyolaangel-bot.github.io/dashboard-copiapo/og-image.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1536" />
+<meta property="og:image:height" content="1024" />
+<meta property="og:image:alt" content="Dashboard Comercial Copiapó · Reporte de Gestión y Cumplimiento" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Dashboard Comercial Copiapó" />
+<meta name="twitter:description" content="Reporte de Gestión y Cumplimiento con datos actualizados desde el Pulso Diario de Negocio." />
+<meta name="twitter:image" content="https://sloyolaangel-bot.github.io/dashboard-copiapo/og-image.png" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -139,7 +156,7 @@ async function loadRemoteReport(){
   }
 }
 function shareReport(){
-  const url=window.location.href;
+  const url=window.location.origin + window.location.pathname;
   const fecha=state.reportDate||'reporte actualizado';
   const text=`📊 REPORTE COMERCIAL COPIAPÓ\nActualizado: ${fecha}\n\nVenta sucursal: ${clp(state.branch.venta)}\nCumplimiento: ${pct(state.branch.cumpl)}\n\nRevisa el detalle del equipo aquí 👇\n${url}`;
   if(navigator.share){navigator.share({title:'Dashboard Comercial Copiapó',text,url}).catch(()=>{});return;}
