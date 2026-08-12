@@ -30,7 +30,7 @@
 .portal-nav-wrap{position:fixed;top:14px;left:14px;z-index:999999}
 .portal-nav-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:14px;background:rgba(38,16,73,.96);color:#fff!important;text-decoration:none!important;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;line-height:1;font-weight:900;border:1px solid rgba(255,255,255,.22);box-shadow:0 9px 25px rgba(25,10,50,.28)}
 .portal-nav-btn:hover{background:#5b21b6}
-@media(max-width:620px){.portal-nav-wrap{top:9px;left:9px}.portal-nav-btn{padding:9px 11px;font-size:11px}}
+@media(max-width:620px){.portal-nav-wrap{top:8px;left:8px}.portal-nav-btn{padding:9px 11px;font-size:11px}}
 </style>
 <div class="portal-nav-wrap"><a class="portal-nav-btn" href="../">← Volver al Portal</a></div>
 
@@ -46,6 +46,8 @@
       <div class="upload">
         <label class="file-btn" for="excelFile">↻ Cargar / actualizar Excel</label>
         <input id="excelFile" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
+        <button id="refreshBtn" type="button" class="file-btn">⟳ Actualizar datos</button>
+        <button id="shareBtn" type="button" class="file-btn">↗ Compartir por WhatsApp</button>
         <span id="loadStatus" class="status ok">Datos iniciales cargados</span>
       </div>
     </div>
@@ -84,7 +86,7 @@
     <div class="table-wrap">
       <table><thead><tr><th>#</th><th>Asistente comercial</th><th class="num">AV + SAV + Consumo</th><th class="num">Captación</th><th class="num">Cuenta Corriente</th><th>Actividad</th></tr></thead><tbody id="detailBody"></tbody></table>
     </div>
-    <div class="offline-note">Archivo único HTML. Las librerías están referenciadas por CDN según lo solicitado; si el navegador ya las tiene en caché, puede operar sin conexión. Los datos iniciales permanecen visibles aun sin conexión.</div>
+    <div class="offline-note">Versión rápida: al abrir el enlace, el dashboard lee <b>reporte.json</b> generado automáticamente por GitHub Actions. El Excel queda como fuente de actualización y el cargador manual sigue disponible como respaldo.</div>
   </section>
 </div>
 <script>
@@ -123,38 +125,35 @@ function findCol(headers,cands,start=0,end=headers.length){const n=headers.map(n
 function parseGestion(wb){const sn=findSheet(wb,['Gestión Av + Sav','Gestion Av + Sav','gestion av+av']);if(!sn)throw new Error('No se encontró la hoja “Gestión Av + Sav”.');const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});const hr=findHeaderRow(rows,['Sucursal','Venta','Meta']);if(hr<0)throw new Error('No se encontró el encabezado Sucursal / Venta / Meta.');const h=rows[hr];const cSuc=findCol(h,['Sucursal']),cVenta=findCol(h,['Venta']),cMeta=findCol(h,['Meta']),cCum=findCol(h,['% Cump','%Cumpl','% Cumpl']),cCumA=findCol(h,['%Cump Acumulado','% Cump Acumulado','%Cumpl acumulado']);const r=rows.slice(hr+1).find(x=>norm(x[cSuc])==='COPIAPO');if(!r)throw new Error('No se encontró Copiapó en Gestión Av + Sav.');let report='';for(let i=0;i<Math.min(6,rows.length);i++)for(const v of rows[i])if(norm(v).includes('RESUMEN DEL'))report=String(v).replace(/^\s*Resumen del\s*/i,'').trim();return {reportDate:report||'Fecha no detectada',branch:{venta:num(r[cVenta]),meta:num(r[cMeta]),cumpl:num(r[cCum]),cumplAcum:num(r[cCumA])}}}
 function parseAssistants(wb){const sn=findSheet(wb,['Asistente Comercial']);if(!sn)throw new Error('No se encontró la hoja “Asistente Comercial”.');const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});const hr=findHeaderRow(rows,['Sucursal','Nombre','Av + Sav + Consumo'],12);if(hr<0)throw new Error('No se encontró la fila de encabezados de Asistente Comercial.');const h=rows[hr],sectionRows=rows.slice(0,hr);const cSuc=findCol(h,['Sucursal']),cNom=findCol(h,['Nombre']),cVenta=findCol(h,['Av + Sav + Consumo']);let secStart=-1,secEnd=h.length;for(const sr of sectionRows){const idx=sr.findIndex(v=>norm(v)==='GESTION CLIENTE (GESTION PROPIA)');if(idx>=0){secStart=idx;for(let j=idx+1;j<sr.length;j++){if(norm(sr[j])){secEnd=j;break}}break}}if(secStart<0){secStart=60;secEnd=69}const cCapt=findCol(h,['Captación','Captacion'],secStart,secEnd),cCC=findCol(h,['Cuenta Corriente'],secStart,secEnd);if([cSuc,cNom,cVenta,cCapt,cCC].some(i=>i<0))throw new Error('Faltan columnas requeridas en Asistente Comercial.');return rows.slice(hr+1).filter(r=>norm(r[cSuc])==='COPIAPO'&&String(r[cNom]||'').trim()).map(r=>({nombre:String(r[cNom]).trim(),avSavConsumo:num(r[cVenta]),captacion:num(r[cCapt]),cuentaCorriente:num(r[cCC])}));}
 async function loadFile(file){loadStatus.textContent='Procesando archivo…';loadStatus.className='status';try{if(typeof XLSX==='undefined')throw new Error('SheetJS no está disponible. Conéctate una vez a internet para cargar la librería CDN.');const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const g=parseGestion(wb),a=parseAssistants(wb);state={fileName:file.name,reportDate:g.reportDate,branch:g.branch,assistants:a};assistantFilter.value='ALL';render();loadStatus.textContent='✓ Actualizado';loadStatus.className='status ok';parserInfo.textContent=`✓ ${a.length} asistentes leídos · ${g.reportDate}`;}catch(e){console.error(e);loadStatus.textContent='Error de lectura';loadStatus.className='status err';parserInfo.textContent='⚠ '+e.message;alert('No se pudo actualizar el dashboard:\n\n'+e.message+'\n\nVerifica que el Excel mantenga la misma estructura de hojas y encabezados.')}}
-
-async function loadPublicReport(){
-  loadStatus.textContent='Buscando reporte público…';loadStatus.className='status';
+async function loadRemoteReport(){
+  loadStatus.textContent='Cargando datos rápidos…';loadStatus.className='status';
   try{
-    const res=await fetch('reporte.xlsx?t='+Date.now(),{cache:'no-store'});
-    if(!res.ok)throw new Error('No se encontró reporte.xlsx publicado.');
-    const buf=await res.arrayBuffer();
-    await new Promise(r=>setTimeout(r,0));
-    const wb=XLSX.read(buf,{type:'array'});
-    await new Promise(r=>setTimeout(r,0));
-    const g=parseGestion(wb),a=parseAssistants(wb);
-    state={fileName:'reporte.xlsx',reportDate:g.reportDate,branch:g.branch,assistants:a};
+    const res=await fetch('reporte.json?v='+Date.now(),{cache:'no-store'});
+    if(!res.ok) throw new Error('No se encontró reporte.json en el sitio.');
+    const j=await res.json();
+    if(!j.assistants||!j.assistants.length) throw new Error('reporte.json no contiene asistentes.');
+    state={
+      fileName:'reporte.json',
+      reportDate:j.reportDate||j.report_date_cl||'Fecha no detectada',
+      branch:j.branch||{},
+      assistants:j.assistants||[]
+    };
     assistantFilter.value='ALL';render();
-    loadStatus.textContent='✓ Reporte público actualizado';loadStatus.className='status ok';
-    parserInfo.textContent=`✓ ${a.length} asistentes · ${g.reportDate} · fecha leída desde el Excel`;
+    loadStatus.textContent='✓ Datos rápidos actualizados';loadStatus.className='status ok';
+    parserInfo.textContent=`✓ ${state.assistants.length} asistentes · ${state.reportDate} · JSON`;
   }catch(e){
     console.warn(e);
-    loadStatus.textContent='Datos incluidos como respaldo';loadStatus.className='status ok';
-    parserInfo.textContent='ℹ No se pudo cargar reporte.xlsx publicado.';
+    loadStatus.textContent='Datos incluidos en el dashboard';loadStatus.className='status ok';
+    parserInfo.textContent='ℹ No se pudo leer reporte.json; se muestran los datos incluidos como respaldo.';
   }
 }
-
-
-function startPublicLoadSafely(){
-  const run=()=>{ if(typeof loadPublicReport==="function") loadPublicReport(); };
-  if("requestIdleCallback" in window){
-    requestIdleCallback(run,{timeout:1200});
-  }else{
-    setTimeout(run,350);
-  }
+function shareReport(){
+  const url=window.location.href;
+  const fecha=state.reportDate||'reporte actualizado';
+  const text=`📊 REPORTE COMERCIAL COPIAPÓ\nActualizado: ${fecha}\n\nVenta sucursal: ${clp(state.branch.venta)}\nCumplimiento: ${pct(state.branch.cumpl)}\n\nRevisa el detalle del equipo aquí 👇\n${url}`;
+  if(navigator.share){navigator.share({title:'Dashboard Comercial Copiapó',text,url}).catch(()=>{});return;}
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank','noopener');
 }
-
-excelFile.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)loadFile(f);e.target.value=''});assistantFilter.addEventListener('change',render);sortFilter.addEventListener('change',render);render();startPublicLoadSafely();
+excelFile.addEventListener('change',e=>{const f=e.target.files?.[0];if(f)loadFile(f);e.target.value=''});refreshBtn.addEventListener('click',loadRemoteReport);shareBtn.addEventListener('click',shareReport);assistantFilter.addEventListener('change',render);sortFilter.addEventListener('change',render);render();loadRemoteReport();
 </script>
 </body></html>
