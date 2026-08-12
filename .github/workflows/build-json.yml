@@ -1,1 +1,44 @@
+name: Generar JSON dashboards
 
+on:
+  push:
+    paths:
+      - 'vida-salud/reporte.xlsx'
+      - 'cruce-captacion/reporte.xlsx'
+      - 'av-sav-cesantia/reporte.xlsx'
+      - 'scripts/build_reports.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-json:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar openpyxl
+        run: pip install openpyxl
+
+      - name: Generar archivos JSON
+        run: python scripts/build_reports.py
+
+      - name: Publicar JSON generado
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add vida-salud/reporte.json vida-salud/history.json cruce-captacion/reporte.json av-sav-cesantia/reporte.json
+          if git diff --cached --quiet; then
+            echo "Sin cambios JSON."
+          else
+            git commit -m "Actualizar datos JSON de dashboards"
+            git push
+          fi
