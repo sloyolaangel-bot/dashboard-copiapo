@@ -1,0 +1,7 @@
+ACTUALIZACIÓN PÚBLICA
+
+1. Mantén el nombre fijo: reporte.xlsx
+2. Reemplaza reporte.xlsx dentro de esta carpeta en GitHub.
+3. Espera el ✓ verde de GitHub Pages.
+4. La fecha visible NO depende del nombre del archivo: se lee desde el contenido interno del Excel.
+5. El mismo enlace seguirá funcionando para WhatsApp.
