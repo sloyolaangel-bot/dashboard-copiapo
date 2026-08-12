@@ -374,22 +374,27 @@ function render(){
 
 async function loadPublicReport(){
  const fn=document.getElementById("fileName");
- fn.textContent="Cargando reporte público…";
+ fn.textContent="Cargando datos…";
  try{
-  const res=await fetch("reporte.xlsx?v="+Date.now(),{cache:"no-store"});
-  if(!res.ok)throw new Error("No se encontró reporte.xlsx");
-  const result=parseWorkbook(await res.arrayBuffer());
-  if(!result.data.length)throw new Error("Sin datos Copiapó");
-  currentData=result.data;currentReport=result.report;
+  const [rj,hj]=await Promise.all([
+    fetch("reporte.json?v="+Date.now(),{cache:"no-store"}),
+    fetch("history.json?v="+Date.now(),{cache:"no-store"})
+  ]);
+  if(!rj.ok)throw new Error("No se encontró reporte.json");
+  const report=await rj.json();
+  const history=hj.ok?await hj.json():{};
+  currentData=report.data||[];
+  currentReport=report.report_label||"Fecha de corte no informada";
+  // Rebuild automatic weekly cuts from tiny history JSON.
+  for(const key of ["S1","S2","S3","S4"]){
+    if(history[key])weekPublic[key]={data:history[key].data||[],report:history[key].report_label||""};
+  }
   const key=currentWeekKey();
   document.getElementById("weekSelect").value=key;
-  fn.textContent=`reporte.xlsx · público · ${currentReport}`;
-  // Snapshot anterior opcional para semanas futuras.
-  if(key==="S3")await loadPreviousSnapshot("S2","reporte_s2.xlsx");
-  if(key==="S4")await loadPreviousSnapshot("S3","reporte_s3.xlsx");
+  fn.textContent=`reporte.json · público · ${currentReport}`;
   refreshAssistantFilter();render();
  }catch(e){
-  console.error(e);fn.textContent="No fue posible cargar reporte.xlsx";
+  console.error(e);fn.textContent="No fue posible cargar reporte.json";
  }
 }
 
