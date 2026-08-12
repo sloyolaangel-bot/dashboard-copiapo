@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard AV–SAV Cesantía | Copiapó</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --purple:#5a189a; --purple2:#7b2cbf; --pink:#c026d3; --bg:#f5f3f8;
+  --card:#fff; --text:#24162f; --muted:#74677d; --green:#168b5b;
+  --amber:#c87900; --red:#c7364f; --line:#e7dfed;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(135deg,#f8f6fb,#efe8f5);color:var(--text)}
+.header{background:linear-gradient(115deg,var(--purple),var(--purple2) 55%,var(--pink));color:#fff;padding:24px 28px;box-shadow:0 10px 30px #4b136033}
+.header-inner{max-width:1500px;margin:auto;display:flex;gap:22px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.title h1{margin:0;font-size:clamp(24px,3vw,38px);letter-spacing:-.7px}
+.title p{margin:7px 0 0;opacity:.88}
+.upload{background:#ffffff18;border:1px solid #ffffff45;border-radius:18px;padding:13px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.upload label{background:#fff;color:var(--purple);padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer}
+.upload input{display:none}
+.file-name{font-size:13px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+main{max-width:1500px;margin:22px auto;padding:0 22px 34px}
+.toolbar{display:flex;gap:14px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin-bottom:18px}
+.control-group{display:flex;gap:12px;flex-wrap:wrap}
+.control{background:#fff;padding:10px 13px;border-radius:14px;border:1px solid var(--line);box-shadow:0 5px 18px #48235b0d}
+.control label{display:block;font-size:11px;text-transform:uppercase;font-weight:800;color:var(--muted);margin-bottom:5px;letter-spacing:.6px}
+.control select,.control input{border:0;outline:0;font-weight:750;color:var(--text);font-size:14px;background:transparent;min-width:150px}
+.meta-input{width:90px!important;min-width:90px!important}
+.update-info{font-size:13px;color:var(--muted);font-weight:650}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:15px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 25px #4c235e12}
+.kpi{padding:18px;position:relative;overflow:hidden}
+.kpi:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;right:-40px;top:-42px;background:linear-gradient(135deg,#7b2cbf22,#c026d322)}
+.kpi .label{font-size:12px;text-transform:uppercase;letter-spacing:.55px;color:var(--muted);font-weight:850}
+.kpi .value{font-size:30px;font-weight:900;margin-top:9px}
+.kpi .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.status-pill{display:inline-block;padding:5px 10px;border-radius:999px;font-weight:850;font-size:12px}
+.status-good{background:#e7f8f0;color:var(--green)} .status-bad{background:#fff0f1;color:var(--red)} .status-none{background:#f1edf4;color:var(--muted)}
+.card-title{font-weight:900;font-size:17px;margin:0 0 4px}
+.card-sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+.table-card{padding:22px;overflow:hidden}
+.table-wrap{overflow:auto;max-height:650px;border:1px solid var(--line);border-radius:14px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:980px}
+thead th{position:sticky;top:0;background:#f1eaf6;color:#4b2166;text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);z-index:2}
+tbody td{padding:11px 10px;border-bottom:1px solid #eee8f1}
+tbody tr:hover{background:#faf7fc}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.name{font-weight:800}
+.progress{height:8px;background:#eee8f2;border-radius:999px;overflow:hidden;min-width:100px}
+.progress span{display:block;height:100%;background:linear-gradient(90deg,var(--purple2),var(--pink));border-radius:999px}
+.empty{padding:35px;text-align:center;color:var(--muted)}
+.note{margin-top:14px;padding:12px 14px;background:#f8f5fa;border-radius:12px;color:var(--muted);font-size:12px;line-height:1.45}
+@media(max-width:1050px){.kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){main{padding:0 12px 25px}.header{padding:20px 16px}.kpis{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<style>
+.portal-nav-wrap{position:fixed;top:14px;left:14px;z-index:999999}
+.portal-nav-btn{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border-radius:14px;background:rgba(38,16,73,.96);color:#fff!important;text-decoration:none!important;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;line-height:1;font-weight:900;border:1px solid rgba(255,255,255,.22);box-shadow:0 9px 25px rgba(25,10,50,.28)}
+@media(max-width:620px){.portal-nav-wrap{top:8px;left:8px}.portal-nav-btn{padding:9px 11px;font-size:11px}}
+</style>
+<div class="portal-nav-wrap"><a class="portal-nav-btn" href="../">← Volver al Portal</a></div>
+
+
+<header class="header">
+  <div class="header-inner">
+    <div class="title">
+      <h1>Cumplimiento AV–SAV Cesantía</h1>
+      <p>Asistentes Comerciales · Sucursal Copiapó · Meta configurable</p>
+    </div>
+    <div class="header-tools">
+      <div class="report-date"><small>Datos actualizados al</small><b id="reportDateValue">—</b></div>
+      <div class="upload"><label for="excelFile">Cargar archivo ZC</label><input id="excelFile" type="file" accept=".xlsx,.xls,.csv"><span id="fileName" class="file-name">Datos iniciales cargados</span></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="toolbar">
+    <div class="control-group">
+      <div class="control">
+        <label>Asistente</label>
+        <select id="assistantFilter"><option value="ALL">Todos los asistentes</option></select>
+      </div>
+      <div class="control">
+        <label>Meta de cruce</label>
+        <input id="metaInput" class="meta-input" type="number" min="1" max="100" step="1" value="65"> %
+      </div>
+    </div>
+    <div class="update-info" id="updateInfo">Hojas esperadas: “Av-Sav” y “Detalle Ejec CCSS”</div>
+  </section>
+
+  <section class="kpis">
+    <div class="card kpi"><div class="label">Seguros Cesantía</div><div id="kpiSeguros" class="value">0</div><div class="sub">Sucursal · hoja Av-Sav</div></div>
+    <div class="card kpi"><div class="label">Ofertas</div><div id="kpiOfertas" class="value">0</div><div class="sub">Ofertas Ces + Mixto Ces</div></div>
+    <div class="card kpi"><div class="label">Cruce real</div><div id="kpiCruce" class="value">0%</div><div class="sub">Cruce Ces sucursal</div></div>
+    <div class="card kpi"><div class="label">Cumplimiento</div><div id="kpiCumplimiento" class="value">0%</div><div class="sub">Cumplimiento meta Ces</div></div>
+    <div class="card kpi"><div class="label">Estado</div><div id="kpiEstado" class="value" style="font-size:20px"><span class="status-pill status-none">Sin ofertas</span></div><div id="kpiBrecha" class="sub">Brecha: —</div></div>
+  </section>
+
+  <section class="card table-card">
+    <h2 class="card-title">Detalle por asistente comercial</h2>
+    <div class="card-sub">Cálculo: (Seg. AV Ces + Seg. SAV Ces) ÷ (Trx Oferta AV + Trx Oferta SAV) ÷ meta.</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Asistente</th>
+          <th class="num">Seg. AV Ces</th><th class="num">Seg. SAV Ces</th>
+          <th class="num">Ofertas AV</th><th class="num">Ofertas SAV</th>
+          <th class="num">Total seguros</th><th class="num">Total ofertas</th>
+          <th class="num">Cruce real</th><th class="num">Cumplimiento</th><th>Estado</th>
+        </tr></thead>
+        <tbody id="detailBody"></tbody>
+      </table>
+    </div>
+    <div class="note">
+      El cargador reconoce la hoja <b>Detalle Ejec CCSS</b>, identifica automáticamente la fila de encabezados,
+      filtra la sucursal <b>COPIAPO</b>, considera cargos cuyo nombre contiene <b>Asistente Comercial</b> y excluye a <b>Ruth Caballero</b> y <b>Marie Toro</b>.
+      Las cinco tarjetas superiores leen el resultado de la sucursal <b>COPIAPO</b> desde la hoja <b>Av-Sav</b>, usando el bloque <b>TOTAL AV + SAV</b> para cesantía. El detalle por asistente continúa usando Seg. AV Ces, Seg. SAV Ces, Trx Oferta AV y Trx Oferta SAV desde <b>Detalle Ejec CCSS</b>.
+    </div>
+  </section>
+</main>
+
+<script>
+const initialData = [{"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "21004642", "nombre": "MEY-GI SOLANGE LOCK CASTRO", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "20481120", "nombre": "CATALINA ANAIS CASTRO CASTRO", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "19459776", "nombre": "CAMILA CONSTANZA ROSALES CASTRO", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "25834472", "nombre": "RUTH CABALLERO", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "17773511", "nombre": "MARIE CARMEN TORO ARANEDA", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial(R)", "rut": "18403590", "nombre": "VALERIA ANDREA PEREZ ROJAS", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "19317147", "nombre": "MAYLIN DANIELA SOTO COLMAN", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "14115612", "nombre": "ESTER GLORIA URRUTIA GARIN", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial JP 25", "rut": "18710806", "nombre": "MACARENA ALEJANDRA RIVERA GODOY", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "18398543", "nombre": "TERESA NYBROSKA CONTRERAS CARMONA", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "11219843", "nombre": "EVA CRISTINA VEGA VILLARROEL", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 1.0, "trxSav": 1.0, "ofertaSav": 1.0, "totalSegArchivo": 0.0}, {"zona": "NORTE", "sucursal": "COPIAPO", "codigo": "84", "posicion": "Asistente Comercial", "rut": "11345720", "nombre": "EDITH MAGALY TRONCOSO CASTILLO", "segAvCes": 0.0, "segAvDesg": 0.0, "trxAv": 0.0, "ofertaAv": 0.0, "segSavCes": 0.0, "segSavDesg": 0.0, "trxSav": 0.0, "ofertaSav": 0.0, "totalSegArchivo": 0.0}];
+const isExcludedAssistant = (name) => {
+  const n = norm(name);
+  return n.includes("RUTH CABALLERO") ||
+         n.includes("MARIE TORO") ||
+         n.includes("MARIE CARMEN TORO") ||
+         n.includes("TORO ARANEDA");
+};
+let allData = initialData;
+let branchData = {seguros:2, ofertas:2, cruce:1, meta:0.65, cumplimiento:1/0.65};
+
+const norm = s => String(s ?? "")
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/\s+/g," ").trim().toUpperCase();
+
+allData = allData.filter(r => !isExcludedAssistant(r.nombre));
+
+const num = v => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const n = Number(String(v ?? "").replace(",","."));
+  return Number.isFinite(n) ? n : 0;
+};
+
+function findHeaderRow(rows) {
+  return rows.findIndex(r => r.some(v => norm(v) === "SUCURSAL") && r.some(v => norm(v) === "NOMBRE"));
+}
+
+function findCol(headers, candidates, fallback=-1) {
+  const normalized = headers.map(norm);
+  for (const candidate of candidates) {
+    const i = normalized.indexOf(norm(candidate));
+    if (i >= 0) return i;
+  }
+  return fallback;
+}
+
+
+function _validDate(d){return d instanceof Date&&!isNaN(d)&&d.getFullYear()>=2024&&d.getFullYear()<=2035}
+function _parseDateText(v){
+ const s=String(v??"").trim();
+ const months={enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,setiembre:8,octubre:9,noviembre:10,diciembre:11,
+ ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,sept:8,oct:9,nov:10,dic:11};
+ let m=s.match(/(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)/i);
+ if(m)return new Date(2026,months[m[2].toLowerCase()],Number(m[1]));
+ m=s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+ if(m){let y=Number(m[3]);if(y<100)y+=2000;return new Date(y,Number(m[2])-1,Number(m[1]));}
+ m=s.match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+ if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+ return null;
+}
+function detectReportDate(wb){
+ let strong=[],weak=[];
+ const labels=/GESTION AL|GESTIÓN AL|DATOS ACTUALIZADOS|ACTUALIZACION|ACTUALIZACIÓN|FECHA DE CORTE|INFORMACION AL|INFORMACIÓN AL|REPORTE AL|MAX. DE FECHA|MAX DE FECHA|MÁX. DE FECHA/;
+ for(const sn of wb.SheetNames){
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:"",raw:true});
+  for(let r=0;r<Math.min(rows.length,150);r++){
+   const row=rows[r]||[];
+   for(let c=0;c<Math.min(row.length,160);c++){
+    const v=row[c],n=norm(v),direct=_parseDateText(v);
+    if(direct&&labels.test(n))strong.push(direct);
+    if(labels.test(n)){
+     for(const nv of [row[c+1],row[c+2],rows[r+1]?.[c],rows[r+1]?.[c+1],rows[r+1]?.[c+2]]){
+      if(_validDate(nv))strong.push(nv);
+      else{
+       const d=_parseDateText(nv);if(d)strong.push(d);
+       if(typeof nv==="number"&&nv>40000&&nv<70000&&XLSX.SSF){
+        const x=XLSX.SSF.parse_date_code(nv);if(x)strong.push(new Date(x.y,x.m-1,x.d));
+       }
+      }
+     }
+    }
+    if(_validDate(v))weak.push(v); else if(direct)weak.push(direct);
+   }
+  }
+ }
+ const arr=(strong.length?strong:weak).filter(_validDate).sort((a,b)=>b-a);
+ return arr[0]||null;
+}
+function formatDetectedDate(d){
+ return _validDate(d)?new Intl.DateTimeFormat("es-CL",{day:"2-digit",month:"2-digit",year:"numeric"}).format(d):"Fecha no informada";
+}
+function reportLabelFromDate(d){
+ if(!_validDate(d))return "Fecha no informada";
+ return `Gestión al ${d.getDate()} de ${d.toLocaleDateString("es-CL",{month:"long"})}`;
+}
+
+function parseWorkbook(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, {type:"array",cellDates:true});
+  const reportDate=detectReportDate(wb);
+
+  // 1) Resultado de sucursal desde la hoja Av-Sav
+  const avSavName = wb.SheetNames.find(n => norm(n) === "AV-SAV")
+    || wb.SheetNames.find(n => norm(n).includes("AV-SAV"));
+  if (!avSavName) throw new Error("No se encontró la hoja “Av-Sav”.");
+
+  const avSavRows = XLSX.utils.sheet_to_json(wb.Sheets[avSavName], {header:1, defval:"", raw:true});
+  const avSavHeaderRow = avSavRows.findIndex(r => norm(r[1]) === "COD_SUC_CCSS" && norm(r[4]) === "SUCURSAL");
+  if (avSavHeaderRow < 0) throw new Error("No se encontró la tabla de sucursales en la hoja “Av-Sav”.");
+
+  const branchRow = avSavRows.slice(avSavHeaderRow + 1)
+    .find(r => norm(r[4]) === "COPIAPO");
+  if (!branchRow) throw new Error("No se encontró la sucursal COPIAPO en la hoja “Av-Sav”.");
+
+  // Bloque TOTAL AV + SAV (columnas Excel 95 a 110; índices JS 94 a 109)
+  const ofertaCes = num(branchRow[95]);       // Trx Oferta Ces
+  const ofertaMixtoCes = num(branchRow[97]);  // Trx Oferta Mixto Ces
+  const segCes = num(branchRow[99]);           // Seg. Ces
+  const segMixtoCes = num(branchRow[101]);     // Seg. Ces Mixto
+  const metaCes = num(branchRow[105]) || 0.65; // Meta Ces.
+  const segurosSucursal = segCes + segMixtoCes;
+  const ofertasSucursal = ofertaCes + ofertaMixtoCes;
+  const cruceSucursal = ofertasSucursal > 0 ? segurosSucursal / ofertasSucursal : num(branchRow[107]);
+  const cumplimientoSucursal = metaCes > 0 ? cruceSucursal / metaCes : num(branchRow[109]);
+
+  const branch = {
+    seguros: segurosSucursal,
+    ofertas: ofertasSucursal,
+    cruce: cruceSucursal,
+    meta: metaCes,
+    cumplimiento: cumplimientoSucursal
+  };
+
+  // 2) Detalle por asistente desde Detalle Ejec CCSS
+  const targetName = wb.SheetNames.find(n => norm(n) === "DETALLE EJEC CCSS")
+    || wb.SheetNames.find(n => norm(n).includes("DETALLE EJEC"));
+  if (!targetName) throw new Error("No se encontró la hoja “Detalle Ejec CCSS”.");
+
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[targetName], {header:1, defval:"", raw:true});
+  const hr = findHeaderRow(rows);
+  if (hr < 0) throw new Error("No se encontró la fila de encabezados con Sucursal y Nombre.");
+  const h = rows[hr];
+
+  const cSucursal = findCol(h, ["Sucursal"], 2);
+  const cPosicion = findCol(h, ["Posición","Posicion"], 4);
+  const cNombre = findCol(h, ["Nombre"], 6);
+  const cRut = findCol(h, ["Rut"], 5);
+  const cSegAvCes = findCol(h, ["Seg. AV Ces"], 22);
+  const cOfertaAv = findCol(h, ["Trx Oferta Av"], 25);
+  const cSegSavCes = findCol(h, ["Seg. SAV Ces"], 26);
+  const cOfertaSav = findCol(h, ["Trx Oferta Sav"], 29);
+
+  const detail = rows.slice(hr+1)
+    .filter(r => norm(r[cSucursal]) === "COPIAPO" && norm(r[cPosicion]).includes("ASISTENTE COMERCIAL"))
+    .map(r => ({
+      sucursal:r[cSucursal], posicion:r[cPosicion], rut:r[cRut], nombre:String(r[cNombre]||"").trim(),
+      segAvCes:num(r[cSegAvCes]), segSavCes:num(r[cSegSavCes]),
+      ofertaAv:num(r[cOfertaAv]), ofertaSav:num(r[cOfertaSav])
+    }))
+    .filter(r => r.nombre);
+
+  return {branch, detail, reportDate};
+}
+
+function calcRow(r, meta) {
+  const seguros = r.segAvCes + r.segSavCes;
+  const ofertas = r.ofertaAv + r.ofertaSav;
+  const cruce = ofertas > 0 ? seguros/ofertas : 0;
+  const cumplimiento = meta > 0 ? cruce/meta : 0;
+  return {...r, seguros, ofertas, cruce, cumplimiento};
+}
+
+function pct(v, digits=0) {
+  return new Intl.NumberFormat("es-CL", {style:"percent", minimumFractionDigits:digits, maximumFractionDigits:digits}).format(v || 0);
+}
+
+function statusHtml(ofertas, cruce, meta) {
+  if (!ofertas) return '<span class="status-pill status-none">Sin ofertas</span>';
+  if (cruce >= meta) return '<span class="status-pill status-good">Cumple</span>';
+  return '<span class="status-pill status-bad">Bajo meta</span>';
+}
+
+function refreshFilters() {
+  const select = document.getElementById("assistantFilter");
+  const current = select.value;
+  select.innerHTML = '<option value="ALL">Todos los asistentes</option>';
+  [...new Set(allData.map(x=>x.nombre))].sort().forEach(n => {
+    const opt = document.createElement("option"); opt.value=n; opt.textContent=n; select.appendChild(opt);
+  });
+  if ([...select.options].some(o=>o.value===current)) select.value=current;
+}
+
+function render() {
+  const meta = Math.max(0.01, num(document.getElementById("metaInput").value)/100);
+  const filter = document.getElementById("assistantFilter").value;
+  const rows = allData.filter(r => filter==="ALL" || r.nombre===filter).map(r=>calcRow(r,meta));
+  // Las tarjetas superiores siempre muestran el resultado total de la sucursal desde Av-Sav.
+  const seguros = branchData.seguros;
+  const ofertas = branchData.ofertas;
+  const cruce = branchData.cruce;
+  const branchMeta = branchData.meta || meta;
+  const cumplimiento = branchData.cumplimiento || (branchMeta > 0 ? cruce/branchMeta : 0);
+  const brecha = cruce-branchMeta;
+
+  document.getElementById("kpiSeguros").textContent = seguros.toLocaleString("es-CL");
+  document.getElementById("kpiOfertas").textContent = ofertas.toLocaleString("es-CL");
+  document.getElementById("kpiCruce").textContent = pct(cruce,1);
+  document.getElementById("kpiCumplimiento").textContent = pct(cumplimiento,0);
+  document.getElementById("kpiEstado").innerHTML = statusHtml(ofertas,cruce,branchMeta);
+  document.getElementById("kpiBrecha").textContent = ofertas ? `Brecha: ${brecha>=0?"+":""}${(brecha*100).toFixed(1).replace(".",",")} pp` : "Brecha: —";
+
+  const body = document.getElementById("detailBody");
+  body.innerHTML = rows.length ? rows.sort((a,b)=>b.cumplimiento-a.cumplimiento).map(r=>`
+    <tr>
+      <td class="name">${r.nombre}</td>
+      <td class="num">${r.segAvCes}</td><td class="num">${r.segSavCes}</td>
+      <td class="num">${r.ofertaAv}</td><td class="num">${r.ofertaSav}</td>
+      <td class="num"><b>${r.seguros}</b></td><td class="num"><b>${r.ofertas}</b></td>
+      <td class="num">${r.ofertas?pct(r.cruce,1):"—"}</td>
+      <td class="num"><b>${r.ofertas?pct(r.cumplimiento,0):"—"}</b></td>
+      <td>${statusHtml(r.ofertas,r.cruce,meta)}</td>
+    </tr>`).join("") : '<tr><td colspan="10" class="empty">No hay asistentes para mostrar.</td></tr>';
+
+}
+
+
+async function loadPublicReport(){
+ try{
+  const res=await fetch('reporte.json?v='+Date.now(),{cache:'no-store'});
+  if(!res.ok)throw new Error("No se encontró reporte.json");
+  const parsed=await res.json();
+  if(!(parsed.detail||[]).length)throw new Error("Sin asistentes");
+  branchData=parsed.branch||branchData;
+  allData=(parsed.detail||[]).filter(r=>!isExcludedAssistant(r.nombre));
+  document.getElementById("fileName").textContent="reporte.json · público";
+  document.getElementById("reportDateValue").textContent=parsed.report_date_cl||"Fecha no informada";
+  document.getElementById("updateInfo").textContent=`✓ Datos rápidos actualizados · ${allData.length} asistentes`;
+  refreshFilters();render();
+ }catch(e){console.warn(e);document.getElementById("updateInfo").textContent="No fue posible cargar reporte.json";}
+}
+document.getElementById("excelFile").addEventListener("change", async e => {
+  const file=e.target.files[0]; if(!file) return;
+  try {
+    const parsed=parseWorkbook(await file.arrayBuffer());
+    if(!parsed.detail.length) throw new Error("El archivo no contiene asistentes comerciales de Copiapó.");
+    branchData=parsed.branch;
+    allData=parsed.detail.filter(r => !isExcludedAssistant(r.nombre));
+    document.getElementById("fileName").textContent=file.name;
+    document.getElementById("reportDateValue").textContent=formatDetectedDate(parsed.reportDate);document.getElementById("updateInfo").textContent=`✓ ${allData.length} asistentes · fecha interna del archivo`;
+    refreshFilters(); render();
+  } catch(err) {
+    alert("No fue posible procesar el archivo.\n\n"+err.message);
+  }
+});
+document.getElementById("assistantFilter").addEventListener("change",render);
+document.getElementById("metaInput").addEventListener("input",render);
+
+refreshFilters();
+render();
+setTimeout(loadPublicReport,300);
+</script>
+</body>
+</html>
