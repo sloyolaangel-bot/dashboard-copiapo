@@ -254,14 +254,154 @@ def build_avsav(path):
     print(f"AV-SAV: {len(detail)} asistentes encontrados. Fecha: {d}")
     write_json(ROOT/"av-sav-cesantia"/"reporte.json",{**report_meta(d),"generated_at":NOW.isoformat(),"branch":branch,"detail":detail})
 
+
+def first_header(rows, required, max_rows=None):
+    lim=len(rows) if max_rows is None else min(len(rows),max_rows)
+    for i in range(lim):
+        n=[norm(x) for x in rows[i]]
+        if all(norm(req) in n for req in required):
+            return i
+    return -1
+
+def find_col_range(headers,names,start=0,end=None):
+    nh=[norm(x) for x in headers]
+    end=len(nh) if end is None else min(end,len(nh))
+    for name in names:
+        nn=norm(name)
+        for i in range(max(0,start),end):
+            if nh[i]==nn:return i
+    return -1
+
+def build_gestion(path):
+    path=Path(path)
+    if not path.exists():raise FileNotFoundError(f"Gestión Comercial: no existe {path}")
+    wb=load_workbook(path,read_only=True,data_only=True)
+
+    gsn=find_sheet(wb,"Gestión Av + Sav") or find_sheet(wb,"Gestion Av + Sav")
+    asn=find_sheet(wb,"Asistente Comercial")
+    if not gsn or not asn:raise RuntimeError("Gestión Comercial: faltan hojas Gestión Av + Sav o Asistente Comercial")
+
+    grows=rows_values(wb[gsn])
+    gh=first_header(grows,["Sucursal","Venta","Meta"],30)
+    if gh<0:raise RuntimeError("Gestión Comercial: encabezado Sucursal/Venta/Meta no encontrado")
+    h=grows[gh]
+    cSuc=find_col_range(h,["Sucursal"]);cVenta=find_col_range(h,["Venta"]);cMeta=find_col_range(h,["Meta"])
+    cCum=find_col_range(h,["% Cump","%Cumpl","% Cumpl"])
+    cCumA=find_col_range(h,["%Cump Acumulado","% Cump Acumulado","%Cumpl acumulado"])
+    br=next((row for row in grows[gh+1:] if cSuc>=0 and cSuc<len(row) and norm(row[cSuc])=="COPIAPO"),None)
+    if br is None:raise RuntimeError("Gestión Comercial: COPIAPO no encontrada en Gestión Av + Sav")
+    def gv(row,i):return row[i] if i>=0 and i<len(row) else 0
+    report=""
+    for row in grows[:6]:
+        for v in row:
+            if "RESUMEN DEL" in norm(v):
+                report=re.sub(r"^\s*Resumen del\s*","",str(v),flags=re.I).strip()
+                break
+        if report:break
+
+    arows=rows_values(wb[asn])
+    ah=first_header(arows,["Sucursal","Nombre","Av + Sav + Consumo"],15)
+    if ah<0:raise RuntimeError("Gestión Comercial: encabezados de Asistente Comercial no encontrados")
+    ha=arows[ah]
+    aSuc=find_col_range(ha,["Sucursal"]);aNom=find_col_range(ha,["Nombre"]);aVenta=find_col_range(ha,["Av + Sav + Consumo"])
+    secStart=-1;secEnd=len(ha)
+    for sr in arows[:ah]:
+        for i,v in enumerate(sr):
+            if norm(v)=="GESTION CLIENTE (GESTION PROPIA)":
+                secStart=i
+                for j in range(i+1,len(sr)):
+                    if norm(sr[j]):
+                        secEnd=j;break
+                break
+        if secStart>=0:break
+    if secStart<0:secStart,secEnd=60,69
+    aCapt=find_col_range(ha,["Captación","Captacion"],secStart,secEnd)
+    aCC=find_col_range(ha,["Cuenta Corriente"],secStart,secEnd)
+    if min(aSuc,aNom,aVenta,aCapt,aCC)<0:
+        raise RuntimeError("Gestión Comercial: faltan columnas AV+SAV+Consumo, Captación o Cuenta Corriente")
+    assistants=[]
+    for row in arows[ah+1:]:
+        if max(aSuc,aNom,aVenta,aCapt,aCC)>=len(row):continue
+        if norm(row[aSuc])!="COPIAPO":continue
+        name=str(row[aNom] or "").strip()
+        if not name:continue
+        assistants.append({"nombre":name,"avSavConsumo":number(row[aVenta]),"captacion":number(row[aCapt]),"cuentaCorriente":number(row[aCC])})
+    if not assistants:raise RuntimeError("Gestión Comercial: no se encontraron asistentes de Copiapó")
+    obj={"generated_at":NOW.isoformat(),"reportDate":report or "Fecha no detectada",
+         "branch":{"venta":number(gv(br,cVenta)),"meta":number(gv(br,cMeta)),"cumpl":number(gv(br,cCum)),"cumplAcum":number(gv(br,cCumA))},
+         "assistants":assistants}
+    print(f"Gestión Comercial: {len(assistants)} asistentes. Reporte: {obj['reportDate']}")
+    write_json(ROOT/"gestion-comercial"/"reporte.json",obj)
+
+def date_text_py(v):
+    if isinstance(v,datetime):return v.strftime("%d/%m/%Y")
+    if isinstance(v,date):return v.strftime("%d/%m/%Y")
+    s=str(v or "").strip()
+    m=re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})",s)
+    if m:return f"{int(m.group(3)):02d}/{int(m.group(2)):02d}/{m.group(1)}"
+    return s
+
+def build_renegociacion(path):
+    path=Path(path)
+    if not path.exists():raise FileNotFoundError(f"Renegociación: no existe {path}")
+    wb=load_workbook(path,read_only=True,data_only=True)
+    rsn=find_sheet(wb,"Resumen General");dsn=find_sheet(wb,"Detalle AACC")
+    if not rsn or not dsn:raise RuntimeError("Renegociación: faltan hojas Resumen General o Detalle AACC")
+    rr=rows_values(wb[rsn])
+    rh=first_header(rr,["Sucursal","Meta Rene Mm$","Q Total Rene","Monto Rene Mm$"])
+    if rh<0:rh=first_header(rr,["Sucursal","Q Total Rene"])
+    if rh<0:raise RuntimeError("Renegociación: encabezado de Resumen General no encontrado")
+    hr=rr[rh]
+    cSuc=find_col_range(hr,["Sucursal"]);cMeta=find_col_range(hr,["Meta Rene Mm$","Meta Rene"])
+    cQ=find_col_range(hr,["Q Total Rene"]);cMonto=find_col_range(hr,["Monto Rene Mm$","Monto Rene"])
+    cCum=find_col_range(hr,["%Cump. Rene","% Cump. Rene","Cump.Rene"])
+    br=next((row for row in rr[rh+1:] if cSuc>=0 and cSuc<len(row) and norm(row[cSuc])=="COPIAPO"),None)
+    if br is None:raise RuntimeError("Renegociación: COPIAPO no encontrada en Resumen General")
+    def rv(row,i):return row[i] if i>=0 and i<len(row) else 0
+    fecha=""
+    for row in rr:
+        for p,v in enumerate(row):
+            if norm(v)=="ACTUALIZACION RENEGOCIACIONES":
+                fecha=date_text_py(row[p+1] if p+1<len(row) else "");break
+        if fecha:break
+    if not fecha:
+        ausn=find_sheet(wb,"Actualizacion") or find_sheet(wb,"Actualización")
+        if ausn:
+            ar=rows_values(wb[ausn])
+            row=next((x for x in ar if len(x)>1 and norm(x[0])=="RENEGOCIACIONES"),None)
+            if row:fecha=date_text_py(row[1])
+
+    dr=rows_values(wb[dsn])
+    dh=first_header(dr,["Nombre Aacc","Sucursal","Meta Rene","Q Total Rene"])
+    if dh<0:raise RuntimeError("Renegociación: encabezado Detalle AACC no encontrado")
+    hd=dr[dh]
+    dNom=find_col_range(hd,["Nombre Aacc"]);dSuc=find_col_range(hd,["Sucursal"])
+    dMeta=find_col_range(hd,["Meta Rene"]);dQ=find_col_range(hd,["Q Total Rene"])
+    dMonto=find_col_range(hd,["Monto Rene Mm$","Monto Rene"]);dCum=find_col_range(hd,["%Cump. Rene","Cump.Rene"])
+    detail=[]
+    for row in dr[dh+1:]:
+        if max(dNom,dSuc,dMeta,dQ,dMonto,dCum)>=len(row):continue
+        if norm(row[dSuc])!="COPIAPO":continue
+        name=str(row[dNom] or "").strip()
+        if not name:continue
+        detail.append({"nombre":name,"meta":number(row[dMeta]),"q":number(row[dQ]),"monto":number(row[dMonto]),"cumpl":number(row[dCum])})
+    if not detail:raise RuntimeError("Renegociación: no se encontraron asistentes de Copiapó")
+    branch={"fecha":fecha or "—","meta":number(rv(br,cMeta)),"q":number(rv(br,cQ)),"monto":number(rv(br,cMonto)),"cumpl":number(rv(br,cCum))}
+    print(f"Renegociación: {len(detail)} asistentes. Fecha: {branch['fecha']}")
+    write_json(ROOT/"renegociacion"/"reporte.json",{"generated_at":NOW.isoformat(),"branch":branch,"detail":detail})
+
 if __name__=="__main__":
     print(f"ROOT detectado: {ROOT}")
     vida_file=find_report_file(ROOT/"vida-salud")
     cruce_file=find_report_file(ROOT/"cruce-captacion")
     avsav_file=find_report_file(ROOT/"av-sav-cesantia")
+    gestion_file=find_report_file(ROOT/"gestion-comercial")
+    reneg_file=find_report_file(ROOT/"renegociacion")
 
     build_vida(vida_file)
     build_cruce(cruce_file)
     build_avsav(avsav_file)
+    build_gestion(gestion_file)
+    build_renegociacion(reneg_file)
 
-    print("JSON generados correctamente.")
+    print("JSON de los 5 dashboards generados correctamente.")
