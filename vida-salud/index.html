@@ -247,7 +247,7 @@ const WEEK1_BASELINE=[
 {nombre:"MAYLIN DANIELA SOTO COLMAN",vida:10,salud:0},
 {nombre:"MEY-GI SOLANGE LOCK CASTRO",vida:1,salud:0},
 {nombre:"CATALINA ANAIS CASTRO CASTRO",vida:1,salud:0},
-{nombre:"MACARENA ALEJANDRA RIVERA GODOY",vida:1,salud:0},
+{nombre:"MACARENA ALEJANDRA RIVERA GODOY",vida:0,salud:0},
 {nombre:"CAMILA CONSTANZA ROSALES CASTRO",vida:0,salud:0},
 {nombre:"VALERIA ANDREA PEREZ ROJAS",vida:0,salud:0},
 {nombre:"EDITH MAGALY TRONCOSO CASTILLO",vida:0,salud:0}
@@ -276,12 +276,27 @@ function currentWeekKey(){
 }
 function currentWeekData(){return rowsForWeek(document.getElementById("weekSelect").value)}
 function rowsForWeek(key){
- if(key==="S1")return mergeIdentity(WEEK1_BASELINE);
+ // S1: usar el cierre real guardado en history.json; WEEK1_BASELINE solo queda como respaldo.
+ if(key==="S1"){
+   const s1=(weekPublic.S1 && Array.isArray(weekPublic.S1.data) && weekPublic.S1.data.length)
+     ? weekPublic.S1.data
+     : WEEK1_BASELINE;
+   return mergeIdentity(s1);
+ }
+
  if(key===currentWeekKey()){
-   if(key==="S2")return subtractByName(currentData,mergeIdentity(WEEK1_BASELINE));
+   // S2: acumulado actual menos el cierre real de S1.
+   if(key==="S2"){
+     const s1=(weekPublic.S1 && Array.isArray(weekPublic.S1.data) && weekPublic.S1.data.length)
+       ? weekPublic.S1.data
+       : WEEK1_BASELINE;
+     return subtractByName(currentData,mergeIdentity(s1));
+   }
+   // S3/S4: acumulado actual menos el último cierre disponible.
    const prev=weekPublic[key==="S3"?"S2":"S3"];
    return prev?subtractByName(currentData,prev.data):[];
  }
+
  return weekPublic[key]?.data||[];
 }
 function weekIncentiveForName(name,key){
@@ -358,7 +373,7 @@ function render(){
  document.getElementById("zeroList").innerHTML=zeroRows.length?zeroRows.map(r=>`<div class="zero-item"><span class="zero-dot"></span><span>${r.nombre}</span></div>`).join(""):'<div class="zero-empty">Todos registran ventas Vida + Salud</div>';
  
  
- const reportLabel=week==="S1"?"Gestión al 9 de agosto":currentReport;
+ const reportLabel=week==="S1"?(weekPublic.S1?.report||"Gestión al 9 de agosto"):currentReport;
  document.getElementById("detailSubtitle").textContent=`Ventas visualizadas hasta: ${reportLabel.replace(/^Gestión al\s*/i,"")} · Semana ${weeks[week].label} · ${week==="S1"?"Cierre semana 1":"Calculado desde acumulado"}`;
  document.getElementById("detailBody").innerHTML=rows.length?rows.sort((a,b)=>b.total-a.total).map(r=>{
    const progress=Math.min(100,(r.total/7)*100);
