@@ -174,7 +174,9 @@ def build_vida(path):
     except: history={}
     wk="S1" if d.day<=9 else "S2" if d.day<=16 else "S3" if d.day<=23 else "S4"
     history[wk]={"report_date":d.isoformat(),"report_label":obj["report_label"],"data":data}
-    # First-week close previously established in the dashboard; preserve it if no S1 exists yet.
+    # Cierre oficial de la semana 01–09.
+    # Macarena Rivera tenía 0 pólizas al cierre del 09-08; su primera Vida corresponde al 10-08.
+    # Si S1 ya existe en history.json, se corrige únicamente Macarena para no alterar el resto del cierre histórico.
     if "S1" not in history:
         history["S1"]={"report_date":f"{d.year}-{d.month:02d}-09","report_label":f"Gestión al 9 de {MONTH_LABEL[d.month]}","data":[
           {"rut":"","nombre":"EVA CRISTINA VEGA VILLARROEL","posicion":"","vida":20,"salud":0},
@@ -183,11 +185,23 @@ def build_vida(path):
           {"rut":"","nombre":"MAYLIN DANIELA SOTO COLMAN","posicion":"","vida":10,"salud":0},
           {"rut":"","nombre":"MEY-GI SOLANGE LOCK CASTRO","posicion":"","vida":1,"salud":0},
           {"rut":"","nombre":"CATALINA ANAIS CASTRO CASTRO","posicion":"","vida":1,"salud":0},
-          {"rut":"","nombre":"MACARENA ALEJANDRA RIVERA GODOY","posicion":"","vida":1,"salud":0},
+          {"rut":"","nombre":"MACARENA ALEJANDRA RIVERA GODOY","posicion":"","vida":0,"salud":0},
           {"rut":"","nombre":"CAMILA CONSTANZA ROSALES CASTRO","posicion":"","vida":0,"salud":0},
           {"rut":"","nombre":"VALERIA ANDREA PEREZ ROJAS","posicion":"","vida":0,"salud":0},
           {"rut":"","nombre":"EDITH MAGALY TRONCOSO CASTILLO","posicion":"","vida":0,"salud":0}
         ]}
+    else:
+        for row in history["S1"].get("data",[]):
+            if norm(row.get("nombre",""))=="MACARENA ALEJANDRA RIVERA GODOY":
+                row["vida"]=0
+                row["salud"]=0
+                break
+        else:
+            history["S1"].setdefault("data",[]).append({
+              "rut":"","nombre":"MACARENA ALEJANDRA RIVERA GODOY","posicion":"","vida":0,"salud":0
+            })
+        history["S1"]["report_date"]=f"{d.year}-{d.month:02d}-09"
+        history["S1"]["report_label"]=f"Gestión al 9 de {MONTH_LABEL[d.month]}"
     write_json(hp,history)
 
 def build_cruce(path):
