@@ -126,7 +126,7 @@ td{padding:11px 10px;border-bottom:1px solid #eee9f1} tr:hover td{background:#fc
     </div>
     <div class="control"><label>Asistente</label><select id="assistantSelect"><option value="ALL">Todos los asistentes</option></select></div>
   </div>
-  <div class="subtitle" style="max-width:520px">Semana 01–09: cierre base. Semana actual: diferencia contra el cierre anterior.</div>
+  <div class="subtitle" style="max-width:520px">Cada semana muestra solo las pólizas de ese período, calculadas por diferencia entre cierres acumulados.</div>
 </section>
 
 <section class="kpis">
@@ -160,8 +160,7 @@ td{padding:11px 10px;border-bottom:1px solid #eee9f1} tr:hover td{background:#fc
   <div class="notice">
     El dashboard lee la hoja <b>Detalle Ejec CCSS</b>, filtra <b>COPIAPO</b> y utiliza las columnas
     <b>Seg. Vida</b> y <b>Seg. Salud</b>. No considera a <b>Ruth Caballero</b> ni a
-    <b>Marie Carmen Toro Araneda</b>. La semana 01–09 utiliza el cierre real guardado del 9 de agosto. La semana 10–16 se calcula como
-    <b>acumulado actual − cierre 01–09</b>. Las pólizas mostradas corresponden exclusivamente a la semana seleccionada. El incentivo acumulado suma solamente las semanas transcurridas hasta esa selección.
+    <b>Marie Carmen Toro Araneda</b>. La semana 01–09 utiliza el cierre real del 9 de agosto. Las semanas siguientes se calculan como <b>cierre acumulado de la semana − cierre acumulado anterior</b>. Las pólizas mostradas corresponden exclusivamente a la semana seleccionada y el incentivo acumulado suma solo las semanas transcurridas.
   </div>
 </section>
 </main>
@@ -241,16 +240,16 @@ function parseWorkbook(buffer){
 
 
 const WEEK1_BASELINE=[
-{nombre:"EVA CRISTINA VEGA VILLARROEL",vida:20,salud:0},
-{nombre:"TERESA NYBROSKA CONTRERAS CARMONA",vida:14,salud:0},
-{nombre:"ESTER GLORIA URRUTIA GARIN",vida:12,salud:0},
-{nombre:"MAYLIN DANIELA SOTO COLMAN",vida:10,salud:0},
-{nombre:"MEY-GI SOLANGE LOCK CASTRO",vida:1,salud:0},
-{nombre:"CATALINA ANAIS CASTRO CASTRO",vida:1,salud:0},
-{nombre:"MACARENA ALEJANDRA RIVERA GODOY",vida:0,salud:0},
 {nombre:"CAMILA CONSTANZA ROSALES CASTRO",vida:0,salud:0},
-{nombre:"VALERIA ANDREA PEREZ ROJAS",vida:0,salud:0},
-{nombre:"EDITH MAGALY TRONCOSO CASTILLO",vida:0,salud:0}
+{nombre:"CATALINA ANAIS CASTRO CASTRO",vida:0,salud:0},
+{nombre:"EDITH MAGALY TRONCOSO CASTILLO",vida:0,salud:0},
+{nombre:"ESTER GLORIA URRUTIA GARIN",vida:10,salud:0},
+{nombre:"EVA CRISTINA VEGA VILLARROEL",vida:16,salud:0},
+{nombre:"MACARENA ALEJANDRA RIVERA GODOY",vida:0,salud:0},
+{nombre:"MAYLIN DANIELA SOTO COLMAN",vida:9,salud:0},
+{nombre:"MEY-GI SOLANGE LOCK CASTRO",vida:1,salud:0},
+{nombre:"TERESA NYBROSKA CONTRERAS CARMONA",vida:14,salud:0},
+{nombre:"VALERIA ANDREA PEREZ ROJAS",vida:0,salud:0}
 ];
 const weekPublic={S1:{data:WEEK1_BASELINE,report:"Gestión al 9 de agosto"}};
 let currentReportDateDay=0;
@@ -275,29 +274,29 @@ function currentWeekKey(){
  return d<=9?"S1":d<=16?"S2":d<=23?"S3":"S4";
 }
 function currentWeekData(){return rowsForWeek(document.getElementById("weekSelect").value)}
+function cumulativeRowsForWeek(key){
+ const currentKey=currentWeekKey();
+ if(key===currentKey && Array.isArray(currentData) && currentData.length)return currentData;
+ const snap=weekPublic[key];
+ return (snap && Array.isArray(snap.data)) ? snap.data : [];
+}
 function rowsForWeek(key){
- // S1: usar el cierre real guardado en history.json; WEEK1_BASELINE solo queda como respaldo.
+ const order=["S1","S2","S3","S4"];
+ const idx=order.indexOf(key);
+ if(idx<0)return [];
+
+ // Cada snapshot de history.json es ACUMULADO al cierre de esa semana.
+ // Para mostrar una semana aislada, se resta el cierre acumulado anterior.
+ const current=cumulativeRowsForWeek(key);
  if(key==="S1"){
-   const s1=(weekPublic.S1 && Array.isArray(weekPublic.S1.data) && weekPublic.S1.data.length)
-     ? weekPublic.S1.data
-     : WEEK1_BASELINE;
-   return mergeIdentity(s1);
+   const base=current.length?current:WEEK1_BASELINE;
+   return mergeIdentity(base);
  }
-
- if(key===currentWeekKey()){
-   // S2: acumulado actual menos el cierre real de S1.
-   if(key==="S2"){
-     const s1=(weekPublic.S1 && Array.isArray(weekPublic.S1.data) && weekPublic.S1.data.length)
-       ? weekPublic.S1.data
-       : WEEK1_BASELINE;
-     return subtractByName(currentData,mergeIdentity(s1));
-   }
-   // S3/S4: acumulado actual menos el último cierre disponible.
-   const prev=weekPublic[key==="S3"?"S2":"S3"];
-   return prev?subtractByName(currentData,prev.data):[];
- }
-
- return weekPublic[key]?.data||[];
+ if(!current.length)return [];
+ const prevKey=order[idx-1];
+ const prev=cumulativeRowsForWeek(prevKey);
+ if(!prev.length)return [];
+ return subtractByName(current,prev);
 }
 function weekIncentiveForName(name,key){
  const r=rowsForWeek(key).find(x=>norm(x.nombre)===norm(name));
