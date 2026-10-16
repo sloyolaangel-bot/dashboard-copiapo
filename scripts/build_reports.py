@@ -7,7 +7,10 @@ from openpyxl import load_workbook
 ROOT=Path(__file__).resolve().parents[1]
 TZ=ZoneInfo("America/Santiago")
 NOW=datetime.now(TZ)
-EXCLUDED=("RUTH CABALLERO","MARIE CARMEN TORO","TORO ARANEDA")
+EXCLUDED=(
+    "RUTH CABALLERO", "MARIE CARMEN TORO", "TORO ARANEDA",
+    "AMELIA CATALINA MIRANDA", "RODRIGO ALEJANDRO ARAVENA",
+)
 
 def norm(v):
     s="" if v is None else str(v)
@@ -168,6 +171,12 @@ def build_vida(path):
     obj={**report_meta(d),"generated_at":NOW.isoformat(),"data":data}
     write_json(ROOT/"vida-salud"/"reporte.json",obj)
 
+    # Historial semanal histórico: solo campaña de agosto de 2026.
+    # Evita mezclar datos de octubre con los cierres oficiales de agosto.
+    if d.year == 2026 and d.month == 8:
+        write_august_history(d, obj, data)
+
+def write_august_history(d, obj, data):
     # Automatic weekly history. Store the latest cumulative snapshot for each campaign week.
     hp=ROOT/"vida-salud"/"history.json"
     try: history=json.loads(hp.read_text(encoding="utf-8")) if hp.exists() else {}
@@ -329,7 +338,7 @@ def build_gestion(path):
         if max(aSuc,aNom,aVenta,aCapt,aCC)>=len(row):continue
         if norm(row[aSuc])!="COPIAPO":continue
         name=str(row[aNom] or "").strip()
-        if not name:continue
+        if not name or is_excluded(name):continue
         assistants.append({"nombre":name,"avSavConsumo":number(row[aVenta]),"captacion":number(row[aCapt]),"cuentaCorriente":number(row[aCC])})
     if not assistants:raise RuntimeError("Gestión Comercial: no se encontraron asistentes de Copiapó")
     obj={"generated_at":NOW.isoformat(),"reportDate":report or "Fecha no detectada",
@@ -388,7 +397,7 @@ def build_renegociacion(path):
         if max(dNom,dSuc,dMeta,dQ,dMonto,dCum)>=len(row):continue
         if norm(row[dSuc])!="COPIAPO":continue
         name=str(row[dNom] or "").strip()
-        if not name:continue
+        if not name or is_excluded(name):continue
         detail.append({"nombre":name,"meta":number(row[dMeta]),"q":number(row[dQ]),"monto":number(row[dMonto]),"cumpl":number(row[dCum])})
     if not detail:raise RuntimeError("Renegociación: no se encontraron asistentes de Copiapó")
     branch={"fecha":fecha or "—","meta":number(rv(br,cMeta)),"q":number(rv(br,cQ)),"monto":number(rv(br,cMonto)),"cumpl":number(rv(br,cCum))}
