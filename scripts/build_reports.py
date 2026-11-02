@@ -150,7 +150,12 @@ def build_vida(path):
     h=rows[hr]
     cSuc=col(h,["Sucursal"],2); cPos=col(h,["Posición","Posicion"],4)
     cRut=col(h,["Rut"],5); cNom=col(h,["Nombre"],6)
-    cVida=col(h,["Seg. Vida"],7); cSalud=col(h,["Seg. Salud"],9)
+    cVida=col(h,["Seg. Vida"],7)
+    cSalud=col(h,["Seg. Salud FA","Seg. Salud"],9)
+    # El encabezado del ZC puede venir sin la letra ó: "Seg. Vida Bonificacin".
+    cVidaBonif=next((i for i,v in enumerate(h) if norm(v).startswith("SEG. VIDA BONIFIC")), -1)
+    cSaludBonif=next((i for i,v in enumerate(h) if norm(v).startswith("SEG. SALUD BONIFIC")), -1)
+    cEgra=col(h,["Seg. EGRA"],-1)
     data=[]
     for r in rows[hr+1:]:
         if cNom>=len(r):continue
@@ -163,7 +168,10 @@ def build_vida(path):
           "nombre":name,
           "posicion":str(r[cPos] or "").strip(),
           "vida":number(r[cVida] if cVida<len(r) else 0),
-          "salud":number(r[cSalud] if cSalud<len(r) else 0)
+          "vidaBonificacion":number(r[cVidaBonif] if 0<=cVidaBonif<len(r) else 0),
+          "salud":number(r[cSalud] if cSalud<len(r) else 0),
+          "saludBonificacion":number(r[cSaludBonif] if 0<=cSaludBonif<len(r) else 0),
+          "egra":number(r[cEgra] if 0<=cEgra<len(r) else 0)
         })
     if not data: raise RuntimeError("Vida+Salud: no se encontraron asistentes comerciales de Copiapó")
     d=detect_report_date(wb,sn)
